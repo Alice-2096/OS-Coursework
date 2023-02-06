@@ -45,6 +45,7 @@ char *readToBuf(int fd, int *numBytesRead)
             char *newBuf = malloc(sizeof(buf) * 2);
             memmove(newBuf, buf, sizeof(buf));
             //! do we want to ignore the nul terminating char?
+            // maybe use: strcpy(newBuf, buf) instead 
             free(buf);
             buf = newBuf;
             currPos = spaceLeft;
