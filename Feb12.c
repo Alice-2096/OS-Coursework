@@ -92,12 +92,12 @@ void uniq(int fd, int prefix, int ignore, int printDup)
     int lenA = 0, lenB = 0;
     char *sA = buf, *sB = buf; // sA prevline, sB currline
 
-    while (start < n && buf[start] != '\0')
+    while (start < n)
     {
         // searches for the first occurrence of '\n'
         char *ptr = strchr(sB, '\n');
         if (!ptr)
-            ptr = buf + (n - 2);
+            ptr = buf + (n - 1);
         lenB = ptr - sB;
         // printf(1, "sB's length: %d", lenB);
 
