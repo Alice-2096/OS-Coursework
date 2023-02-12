@@ -2,8 +2,7 @@
 #include "stat.h"
 #include "user.h"
 
-// util function: compare string ignoring case difference
-// return 0 if same
+// compare string ignoring case difference, return 0 if same
 int strcmp2(char *a, char *b, int lenA, int lenB)
 {
     if (lenA != lenB)
@@ -25,6 +24,7 @@ int strcmp2(char *a, char *b, int lenA, int lenB)
         return 0;
     }
 }
+// return 0 if same, taking into account case difference
 int strcmp1(char *a, char *b, int lenA, int lenB)
 {
     if (lenA != lenB)
@@ -41,7 +41,7 @@ int strcmp1(char *a, char *b, int lenA, int lenB)
     }
 }
 
-// given an open file, read file to buffer, return num of bytes read
+// given an open file, read file to buffer, return buffer
 char *readToBuf(int fd)
 {
     int n, currPos = 0, bufSize = 1024;
@@ -60,7 +60,6 @@ char *readToBuf(int fd)
             // buffer resize
             bufSize += 1024;
             char *newBuf = malloc(sizeof(char) * bufSize);
-            printf(1, "MALLOC, bufsize is now%d\n", bufSize);
             if (!newBuf)
             {
                 printf(1, "memory allocation error\n");
@@ -87,33 +86,28 @@ void uniq(int fd, int prefix, int ignore, int printDup)
     int n, cnt = 1;
     char *buf = readToBuf(fd);
     n = strlen(buf) + 1;
-    // printf(1, "total num of chars is %d\n", n);
     int start = 0;
     int lenA = 0, lenB = 0;
-    char *sA = buf, *sB = buf; // sA prevline, sB currline
+    char *sA = buf, *sB = buf; 
 
-    while (start < n)
+    while (start < n && buf[start] != '\0')
     {
-        // searches for the first occurrence of '\n'
+        // searches for the first occurrence of '\n' 
         char *ptr = strchr(sB, '\n');
         if (!ptr)
             ptr = buf + (n - 1);
         lenB = ptr - sB;
-        // printf(1, "sB's length: %d", lenB);
 
-        // compare sA(prevline) and sB(currline)
+        // compare sA and sB
         if (start != 0)
         {
             if ((!ignore && strcmp1(sA, sB, lenA, lenB) == 0) || (ignore && strcmp2(sA, sB, lenA, lenB) == 0))
             {
-                // if same
                 cnt++;
-                // printf(1, "same string\n");
             }
             else
             {
                 // if different, print according to flags
-                // printf(1, "different string, print sA:\n");
                 char *line = malloc(sizeof(char) * (lenA + 1));
                 memmove(line, sA, lenA);
                 line[lenA] = '\0';
@@ -125,27 +119,32 @@ void uniq(int fd, int prefix, int ignore, int printDup)
                     printf(1, "%s\n", line);
                 free(line);
                 cnt = 1;
+                sA = sB;
+                lenA = lenB;
             }
         }
         else
         {
             cnt = 1;
+            sA = buf;
+            lenA = lenB;
         }
         start = ptr - buf + 1;
-        // printf(1, "reset start to %d\n", start);
-        sA = sB;
-        lenA = lenB;
         sB = ptr + 1;
     }
-    // print the last line
+    
+    // print the last line according to flags
     char *line = malloc(sizeof(char) * (lenA + 1));
     memmove(line, sA, lenA);
     line[lenA] = '\0';
-    if (prefix)
-        printf(1, "%d %s\n", cnt, sA);
-    else if (!printDup || cnt > 1)
-        printf(1, "%s\n", sA);
+    if (!printDup && prefix)
+        printf(1, "%d %s\n", cnt, line);
+    else if (!printDup && !prefix)
+        printf(1, "%s\n", line);
+    else if (printDup && cnt > 1)
+        printf(1, "%s\n", line);
     free(line);
+    return;
 }
 
 int main(int argc, char *argv[])
