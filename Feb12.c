@@ -42,7 +42,6 @@ int strcmp1(char *a, char *b, int lenA, int lenB)
 }
 
 // given an open file, read file to buffer, return num of bytes read
-// THIS PART IS ALL GOOD. 
 char *readToBuf(int fd)
 {
     int n, currPos = 0, bufSize = 1024;
@@ -80,7 +79,6 @@ char *readToBuf(int fd)
     return buf;
 }
 
-//! BUGS 
 //-c flag --> prefix==1, otherwise prefix==0
 //-i flag --> ignore==1, otherwise ignore==0
 //-d flag --> printDup==1, otherwise printDup==0
@@ -92,18 +90,18 @@ void uniq(int fd, int prefix, int ignore, int printDup)
     printf(1, "total num of chars is %d\n", n);
     int start = 0;
     int lenA = 0, lenB = 0;
-    char *sA = buf, *sB = buf; // sA currline, sB nextline
+    char *sA = buf, *sB = buf; // sA prevline, sB currline
 
-    while (start < n)
+    while (start < n && buf[start] != '\0')
     {
         // searches for the first occurrence of '\n'
-        char *ptr = strchr(buf + start, '\n');
+        char *ptr = strchr(sB, '\n');
         if (!ptr)
-            ptr = buf + (n - 1);
-        lenB = ptr - buf;
+            ptr = buf + (n - 2);
+        lenB = ptr - sB;
         printf(1, "sB's length: %d", lenB);
 
-        // compare currline and nextline
+        // compare sA(prevline) and sB(currline)
         if (start != 0)
         {
             if ((!ignore && strcmp1(sA, sB, lenA, lenB) == 0) || (ignore && strcmp2(sA, sB, lenA, lenB) == 0))
@@ -116,35 +114,46 @@ void uniq(int fd, int prefix, int ignore, int printDup)
             {
                 // if different, print according to flags
                 printf(1, "different string, print sA:\n");
-                printf(1, "(%.*s)\n", lenA, sA);
-                // if (!printDup && prefix)
-                //     printf(1, "%d %s", cnt, currline);
-                // else if (!printDup && !prefix)
-                //     printf(1, "%s", currline);
-                // else if (printDup && cnt > 1)
-                //     printf(1, "%s", currline);
+                char *line = malloc(sizeof(char) * (lenA + 1));
+                memmove(line, sA, lenA);
+                line[lenA] = '\0';
+                if (!printDup && prefix)
+                    printf(1, "%d %s", cnt, line);
+                else if (!printDup && !prefix)
+                    printf(1, "%s", line);
+                else if (printDup && cnt > 1)
+                    printf(1, "%s", line);
+                free(line);
                 cnt = 1;
-                memmove(sA, sB, lenB);
             }
         }
         else
         {
             cnt = 1;
-            memmove(sA, sB, lenB);
         }
-        printf(1, "after moving nextline to currline\n");
+        if (start != 0)
+        {
+            char *line = malloc(sizeof(char) * (lenA + 1));
+            memmove(line, sA, lenA);
+            line[lenA] = '\0';
+            printf(1, "%s\n", line);
+            free(line);
+        }
         start = ptr - buf + 1;
         printf(1, "reset start to %d\n", start);
         sA = sB;
         lenA = lenB;
-        sB = buf + start;
+        sB = ptr + 1;
     }
     // print the last line
-    // if (prefix)
-    //     printf(1, "%d %s\n", cnt, currline);
-    // else if (!printDup || cnt > 1)
-    //     printf(1, "%s\n", currline);
-    // printf(1, "line124\n");
+    char *line = malloc(sizeof(char) * (lenA + 1));
+    memmove(line, sA, lenA);
+    line[lenA] = '\0';
+    if (prefix)
+        printf(1, "%d %s\n", cnt, sA);
+    else if (!printDup || cnt > 1)
+        printf(1, "%s\n", sA);
+    free(line);
 }
 
 int main(int argc, char *argv[])
