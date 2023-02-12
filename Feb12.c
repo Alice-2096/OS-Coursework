@@ -87,7 +87,7 @@ void uniq(int fd, int prefix, int ignore, int printDup)
     int n, cnt = 1;
     char *buf = readToBuf(fd);
     n = strlen(buf) + 1;
-    printf(1, "total num of chars is %d\n", n);
+    // printf(1, "total num of chars is %d\n", n);
     int start = 0;
     int lenA = 0, lenB = 0;
     char *sA = buf, *sB = buf; // sA prevline, sB currline
@@ -99,7 +99,7 @@ void uniq(int fd, int prefix, int ignore, int printDup)
         if (!ptr)
             ptr = buf + (n - 2);
         lenB = ptr - sB;
-        printf(1, "sB's length: %d", lenB);
+        // printf(1, "sB's length: %d", lenB);
 
         // compare sA(prevline) and sB(currline)
         if (start != 0)
@@ -108,21 +108,21 @@ void uniq(int fd, int prefix, int ignore, int printDup)
             {
                 // if same
                 cnt++;
-                printf(1, "same string\n");
+                // printf(1, "same string\n");
             }
             else
             {
                 // if different, print according to flags
-                printf(1, "different string, print sA:\n");
+                // printf(1, "different string, print sA:\n");
                 char *line = malloc(sizeof(char) * (lenA + 1));
                 memmove(line, sA, lenA);
                 line[lenA] = '\0';
                 if (!printDup && prefix)
-                    printf(1, "%d %s", cnt, line);
+                    printf(1, "%d %s\n", cnt, line);
                 else if (!printDup && !prefix)
-                    printf(1, "%s", line);
+                    printf(1, "%s\n", line);
                 else if (printDup && cnt > 1)
-                    printf(1, "%s", line);
+                    printf(1, "%s\n", line);
                 free(line);
                 cnt = 1;
             }
@@ -131,16 +131,8 @@ void uniq(int fd, int prefix, int ignore, int printDup)
         {
             cnt = 1;
         }
-        if (start != 0)
-        {
-            char *line = malloc(sizeof(char) * (lenA + 1));
-            memmove(line, sA, lenA);
-            line[lenA] = '\0';
-            printf(1, "%s\n", line);
-            free(line);
-        }
         start = ptr - buf + 1;
-        printf(1, "reset start to %d\n", start);
+        // printf(1, "reset start to %d\n", start);
         sA = sB;
         lenA = lenB;
         sB = ptr + 1;
