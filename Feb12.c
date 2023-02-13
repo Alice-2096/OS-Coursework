@@ -2,7 +2,8 @@
 #include "stat.h"
 #include "user.h"
 
-// compare string ignoring case difference, return 0 if same
+// util function: compare string ignoring case difference
+// return 0 if same
 int strcmp2(char *a, char *b, int lenA, int lenB)
 {
     if (lenA != lenB)
@@ -24,7 +25,6 @@ int strcmp2(char *a, char *b, int lenA, int lenB)
         return 0;
     }
 }
-// return 0 if same, taking into account case difference
 int strcmp1(char *a, char *b, int lenA, int lenB)
 {
     if (lenA != lenB)
@@ -41,7 +41,7 @@ int strcmp1(char *a, char *b, int lenA, int lenB)
     }
 }
 
-// given an open file, read file to buffer, return buffer
+// given an open file, read file to buffer, return num of bytes read
 char *readToBuf(int fd)
 {
     int n, currPos = 0, bufSize = 1024;
@@ -60,6 +60,7 @@ char *readToBuf(int fd)
             // buffer resize
             bufSize += 1024;
             char *newBuf = malloc(sizeof(char) * bufSize);
+            // printf(1, "MALLOC, bufsize is now%d\n", bufSize);
             if (!newBuf)
             {
                 printf(1, "memory allocation error\n");
@@ -86,23 +87,26 @@ void uniq(int fd, int prefix, int ignore, int printDup)
     int n, cnt = 1;
     char *buf = readToBuf(fd);
     n = strlen(buf) + 1;
+    // printf(1, "total num of chars is %d\n", n);
     int start = 0;
     int lenA = 0, lenB = 0;
-    char *sA = buf, *sB = buf; 
+    char *sA = buf, *sB = buf; // sA prevline, sB currline
 
     while (start < n && buf[start] != '\0')
     {
-        // searches for the first occurrence of '\n' 
+        // searches for the first occurrence of '\n'
         char *ptr = strchr(sB, '\n');
         if (!ptr)
             ptr = buf + (n - 1);
         lenB = ptr - sB;
+        // printf(1, "sB's length: %d", lenB);
 
-        // compare sA and sB
+        // compare sA(prevline) and sB(currline)
         if (start != 0)
         {
             if ((!ignore && strcmp1(sA, sB, lenA, lenB) == 0) || (ignore && strcmp2(sA, sB, lenA, lenB) == 0))
             {
+                // if same
                 cnt++;
             }
             else
@@ -132,8 +136,7 @@ void uniq(int fd, int prefix, int ignore, int printDup)
         start = ptr - buf + 1;
         sB = ptr + 1;
     }
-    
-    // print the last line according to flags
+    // print the last line
     char *line = malloc(sizeof(char) * (lenA + 1));
     memmove(line, sA, lenA);
     line[lenA] = '\0';
