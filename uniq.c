@@ -60,7 +60,6 @@ char *readToBuf(int fd)
             // buffer resize
             bufSize += 1024;
             char *newBuf = malloc(sizeof(char) * bufSize);
-            // printf(1, "MALLOC, bufsize is now%d\n", bufSize);
             if (!newBuf)
             {
                 printf(1, "memory allocation error\n");
