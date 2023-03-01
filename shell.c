@@ -93,8 +93,30 @@ void runcmd(struct cmd *cmd)
 
   case '|':
     pcmd = (struct pipecmd *)cmd;
-    fprintf(stderr, "pipe not implemented\n");
     // Your code here ...
+    int p[2];
+    pipe(p);
+    if (fork() == 0)
+    {
+      // change STDOUT to be the WRITE end of the pipe
+      close(p[0]); // close READ end of the pipe
+      dup2(p[1], 1);
+      close(p[1]); // close WRITE end, why?
+      runcmd(pcmd->left);
+    }
+
+    if (fork() == 0)
+    {
+      // change STDIN to be the READ end of the pipe
+      close(p[1]);   // close WRITE because we don't need it
+      dup2(p[0], 0); //
+      close(p[0]);   // close READ, WHY?
+      runcmd(pcmd->right);
+    }
+    close(p[0]);
+    close(p[1]); // why need these two close() calls?
+    wait(NULL);
+    wait(NULL); // reap the two children?
     break;
   }
   exit(0);
