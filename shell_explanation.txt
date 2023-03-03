@@ -1,0 +1,108 @@
+Explanation: 
+
+Part 1 Command Execution 
+-----------------------------------------
+Given the command (ecmd->argv[0]), we use execvp() to execute it. 
+
+In our program, execvp() takes in two arguments: 
+	(1) a filename or pathname 
+	(2) a pointer to the list of arguments as a NULL-terminated array of pointers to strings.
+The first argument specifies the filename of the executable such as 'wc' or 'ls'. Given the filename, the function will search the directories listed in the PATH environment variable. According to the man page, "search path [of execvp()] is the path specified in the environment by “PATH” variable." 
+
+
+Part 2 I/O Redirection 
+-----------------------------------------
+Depending on rcmd->type, we want to open the file in the rcmd struct using different access modes and permission levels. 
+
+if >, we want to open file with O_CREAT | O_WRONLY | O_TRUNC flags. This allows us to create a new file if the given pathname does not exist. If the file does exist and its access mode allows writing, it will "truncate" it to zero bytes, erasing everything that is already in the file.
+The permission level is set to S_IWUSR | S_IWGRP, since we only want the owner of the file or the group to be able to write to it. 
+
+If <, we want to set the access mode to O_RDONLY because the program only needs to read data from the file. The group permission is set to S_IRUSR | S_IRGRP since we only want the owner or the group to be able to read from this file. 
+
+open() will return the file descriptor of the opened file. On success, we update rcmd->fd to be the fd of the newly opened file so that when we execute the command the output can be directed into the new fd. After we finish executing the command, we close the file descriptor. 
+
+
+Part 3 Pipes
+-----------------------------------------
+In the parent process, we first create a pipe by calling pipe(p) where p is an int array of two elements. p[0] is the fd to read from, and p[1] is the fd to write to. 
+
+	WRITE p[1] ======== p[0] READ 
+
+The parent forks twice, spawning two child processes in total. The parent's file descriptor table is replicated in the child. So all its children will have access to the pipe. 
+
+
+	Child1 ====> 1 |  p[1] <====> p[0] | 0 <==== Child 2 
+			
+In the first fork, the first child first closes the read end of the pipe since it does not need to read anything from the pipe. Then it changes STDOUT to be the pipe's write end so when the executing program writes to STDOUT, it will actually write to the pipe's write end. This is done via dup(). Then the child process runs the command on the left side and outputs it to the write end of the pipe. 
+
+The parent forks again. It closes the write end of the pipe since it does not need to write anything to the pipe. It changes STDIN to be the pipe's read end. Again, this is done via dup(). A read from p[0] accesses the data written to p[1]. Then the child process runs the command on the right side using the input it reads from the pipe, which appears to the second child as if it's coming directly from STDIN.
+
+The parent process is blocked until two child processes finish and their exit code is reaped. The parent closes the pipe and exits after reaping the exit codes. 
+ 
+
+Part 4 Summary Questions 
+-----------------------------------------
+Q1
+How do we implement the following list of commands successively?
+We can use the AND operator or use semicolons to chain them up. 
+
+cmd-1 && cmd-2 && cmd-3
+cmd-1 ; cmd-2 ; cmd-3
+
+How do you ensure that commands are executed regardless of whether each previous command succeeds, and how do you implement them? 
+	In this case, use semicolons to chain them up. 
+
+cmd-1 ; cmd-2 ; cmd-3 
+cmd-2 and cmd-3 will execute even if cmd-1 fails. 
+
+What is another method to warrant that a command executes only if the previous command succeeds?
+	
+I can think of two ways: 
+Use AND operator: 
+
+cmd-1 && cmd-2 && cmd-3
+The next command will be executed only if its previous command succeeds. 
+
+We could output the exit status/exit code of the previous command to an environment variable. Every time we execute a command, we first check if that variable is 0 or 1. If 0, we execute the current command; otherwise, we abort the program. 
+
+Q2
+How would you implement sub-shells by implementing “(” and “)”?
+
+First, there will be an extra step when parsing the command. If ‘(‘ and ‘)’ is found in the command line, then it indicates that there is a subshell to be executed. The parse or lexer parses the subshell to be executed and stores it in some structure or variable. 
+
+Second, the shell (aka. parent) will spawn a child process to run the subshell program. fork() duplicates the current working environment of the shell so that the child can access whatever resources the shell currently has. While the child runs, the parent will wait for it to finish. A pipe is required to open up a communication channel between the parent and the child. The parent can write to the child and the child and write the output back to the parent. 
+
+Lastly, the parent reads the output of the subshell from the read end of the pipe. It then closes the pipe and reaps the child. Now it will continue executing the rest of the program. 
+
+
+​Q3
+How would you implement running commands in the background by supporting “&” and “wait”?
+
+To support running a program in the background, we could fork a new child every time we encounter ‘&.’ 
+For example, if the command to be executed is cmd1 & cmd2 & cmd3, the control flow will look like this: 
+
+Parent
+Child – execute cmd1
+Child – execute cmd2
+	Child – execute cmd3
+WAIT(); 
+WAIT();
+WAIT();
+exit(0); 
+
+‘wait’ waits for all background programs to finish, while ‘wait $bg_pid’ wait for some background process to finish. If we want to wait for all background programs to finish, we need to call WAIT() in the shell on each child it has spawned before moving on to execute what goes after ‘wait’ in the command line. 
+
+If we only need to wait for some specific process p to finish before moving on, we call waitpid() on p to specifically wait for it to finish. For example, if the script is
+
+cmd1 & 
+p1=$!   #store the pid of the process that runs cmd1
+wait $p1 
+cmd2 & 
+cmd3 & 
+wait 
+…
+
+Then the shell will spawn the first child to handle cmd1 and then wait on it. After the shell reaps the first child, it will then fork twice to let the first child handle cmd2 and the second child handle cmd3. Then it will wait for them to finish before it moves on to the next command. 
+
+
+
