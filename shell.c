@@ -72,7 +72,6 @@ void runcmd(struct cmd *cmd)
   case '>':
   case '<':
     rcmd = (struct redircmd *)cmd;
-    // fprintf(stderr, "redir not implemented\n");
     // Your code here ...
     int fd = -1;
     if (rcmd->type == '<')
@@ -84,9 +83,7 @@ void runcmd(struct cmd *cmd)
       printf("redirect: open file error: %s\n", rcmd->file);
       exit(1);
     }
-    close(rcmd->fd);
-    rcmd->fd = fd;
-    printf("new fd is :%d", rcmd->fd);
+    dup2(rcmd->fd, fd);
     runcmd(rcmd->cmd);
     close(fd);
     break;
@@ -94,29 +91,28 @@ void runcmd(struct cmd *cmd)
   case '|':
     pcmd = (struct pipecmd *)cmd;
     // Your code here ...
-    int p[2];
     pipe(p);
     if (fork() == 0)
     {
       // change STDOUT to be the WRITE end of the pipe
-      close(p[0]); // close READ end of the pipe
+      close(p[0]);
       dup2(p[1], 1);
-      close(p[1]); // close WRITE end, why?
+      close(p[1]);
       runcmd(pcmd->left);
     }
 
     if (fork() == 0)
     {
       // change STDIN to be the READ end of the pipe
-      close(p[1]);   // close WRITE because we don't need it
-      dup2(p[0], 0); //
-      close(p[0]);   // close READ, WHY?
+      close(p[1]);
+      dup2(p[0], 0);
+      close(p[0]);
       runcmd(pcmd->right);
     }
     close(p[0]);
-    close(p[1]); // why need these two close() calls?
+    close(p[1]);
     wait(NULL);
-    wait(NULL); // reap the two children?
+    wait(NULL);
     break;
   }
   exit(0);
