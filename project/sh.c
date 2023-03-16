@@ -86,6 +86,7 @@ void runcmd(struct cmd *cmd)
     {
       trace(1);
     }
+
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -154,27 +155,32 @@ int getcmd(char *buf, int nbuf)
   return 0;
 }
 
-char strace[] = "strace on\n";
-char straceOff[] = "strace off\n";
-int compareStr(char *a, char *b)
+char strace[] = "strace";
+char on[] = "on";
+char off[] = "off";
+int compareStr(char *a, char *b, int len)
 {
-  while (1)
+  int lenA = strlen(a);
+  int lenB = strlen(b);
+  if (len == -1 && lenB != lenA)
+    return 0;
+  int i, j;
+  if (len > 0)
+    j = len;
+  else
+    j = lenA;
+  for (i = 0; i < j; i++)
   {
-    if (*a != *b)
-    {
+    if (a[i] != b[i])
       return 0;
-    }
-    if (*a == '\n')
-      return 1;
-    a++;
-    b++;
   }
-  return 0;
+  return 1;
 }
 
 int main(void)
 {
   static char buf[100];
+  static char bufC[100];
   int fd;
 
   // Ensure that three file descriptors are open.
@@ -198,17 +204,59 @@ int main(void)
         printf(2, "cannot cd %s\n", buf + 3);
       continue;
     }
-    else if (compareStr(buf, strace))
-    {
-      traceMode = 1;
-      continue;
-    }
-    else if (compareStr(buf, straceOff))
-    {
-      traceMode = 0;
-      continue;
-    }
 
+    if (compareStr(buf, strace, strlen(strace)))
+    {
+      if (strlen(buf) > 10)
+      {
+        int i = 10, j = 0;
+        while (i < strlen(buf))
+        {
+          bufC[j] = buf[i];
+          j++;
+          i++;
+        }
+      }
+      struct execcmd *ecmd;
+      ecmd = (struct execcmd *)parsecmd(buf);
+      int argc = 0;
+      while (ecmd->argv[argc])
+        argc++;
+      if (argc == 2)
+      {
+        // toggle trade mode on or off
+        if (compareStr(ecmd->argv[1], on, -1))
+          traceMode = 1;
+        if (compareStr(ecmd->argv[1], off, -1))
+          traceMode = 0;
+      }
+      if (argc > 2)
+      {
+        if (compareStr(ecmd->argv[1], "run", -1))
+        {
+          traceMode = 1;
+          if (fork1() == 0)
+          {
+            runcmd(parsecmd(bufC));
+          }
+          wait();
+          traceMode = 0;
+        }
+        else if (compareStr(ecmd->argv[1], "-e", -1))
+        {
+          // tracking only specified syscalls
+        }
+        else if (compareStr(ecmd->argv[1], "-s", -1))
+        {
+          // tracking only successful syscalls
+        }
+        else if (compareStr(ecmd->argv[1], "-e", -1))
+        {
+          // tracking only failed syscalls
+        }
+      }
+      continue;
+    }
     if (fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
