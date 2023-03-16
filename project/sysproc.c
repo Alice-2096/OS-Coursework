@@ -98,7 +98,7 @@ int sys_trace(void)
   }
   else
   {
-    proc->trace = -1;
+    proc->trace = 0;
   }
   return 0;
 }
