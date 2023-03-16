@@ -3,32 +3,20 @@ cpu1: starting
 cpu0: starting
 sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
 init: starting sh
+$ echo hello
+hello
 $ strace on
-TRACE: pid = 2 | command_name = sh | syscall_num = 3 | return value = 3
-$TRACE: pid = 2 | command_name = sh | syscall_num = 16 | return value = 1
- TRACE: pid = 2 | command_name = sh | syscall_num = 16 | return value = 1
-echo hello
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 5 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 1 | return value = 4
-TRACE: pid = 4 | command_name = sh | syscall_num = 12 | return value = 16384
-TRACE: pid = 4 | command_name = echo | syscall_num = 7 | return value = 0
-hTRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
-eTRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
-lTRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
-lTRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
-oTRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
+$ echo hello
+TRACE: pid = 4 | command name = sh | syscall = trace | return value = 0
+TRACE: pid = 4 | command name = echo | syscall = exec | return value = 0
+hTRACE: pid = 4 | command name = echo | syscall = write | return value = 1
+eTRACE: pid = 4 | command name = echo | syscall = write | return value = 1
+lTRACE: pid = 4 | command name = echo | syscall = write | return value = 1
+lTRACE: pid = 4 | command name = echo | syscall = write | return value = 1
+oTRACE: pid = 4 | command name = echo | syscall = write | return value = 1
 
-TRACE: pid = 4 | command_name = echo | syscall_num = 16 | return value = 1
-TRACE: pid = 2 | command_name = sh | syscall_num = 3 | return value = 4
-$TRACE: pid = 2 | command_name = sh | syscall_num = 16 | return value = 1
- TRACE: pid = 2 | command_name = sh | syscall_num = 16 | return value = 1
+TRACE: pid = 4 | command name = echo | syscall = write | return value = 1
+TRACE: pid = 4 | command name = echo | syscall = exit 
+$ strace off
+$ echo hello
+hello
