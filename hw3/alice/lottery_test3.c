@@ -5,13 +5,11 @@
 void dummy(char *c)
 {
     int z;
-    for (z = 0; z < 100000000; z += 1)
+    int x = 0;
+    for (z = 0; z < 1000000000; z += 1)
     {
-        if (z + 1 == 100000000)
-        {
-            printf(1, "F\n"); // F indicates finish
-        }
-        else if (z % 1000000 == 0)
+        x = x + 1;
+        if (z % 100000000 == 0) // print every 100000000 iteration
         {
             printf(1, c);
         }
@@ -20,40 +18,48 @@ void dummy(char *c)
 
 int main(int argc, char *argv[])
 {
-    printf(2, "Starting LOTTERY TEST - 4\n");
+    printf(1, "Starting LOTTERY TEST - 4\n");
 
-    int c1_pid;
-    int c2_pid;
-    int c3_pid;
+    // int c3_pid;
+    int i;
+    for (i = 0; i < 10; i++)
+    {
+        int c1_pid = fork();
+        if (c1_pid == 0)
+        {
+            char s[] = "x";
+            // child 1 runs with low priority
+            nice(getpid(), 40);
+            dummy(s);
+            printf(1, "finished: %d\n", getpid());
+            exit();
+        }
+        int c2_pid = fork();
+        if (c2_pid == 0)
+        {
+            // child 2 runs with medium priority
+            char s[] = "y";
+            nice(getpid(), 1);
+            dummy(s);
+            printf(1, "finished: %d\n", getpid());
+            exit();
+        }
+        wait();
+        wait();
+    }
 
-    if ((c1_pid = fork()) == 0)
-    {
-        char s[] = "x";
-        // child 1 runs with high priority
-        nice(c1_pid, 1);
-        dummy(s);
-        exit();
-    }
-    else if ((c2_pid = fork()) == 0)
-    {
-        // child 2 runs with medium priority
-        char s[] = "y";
-        nice(c2_pid, 20);
-        dummy(s);
-        exit();
-    }
-    else if ((c3_pid = fork()) == 0)
-    {
-        // child 3 runs with low priority
-        char s[] = "z";
-        nice(c3_pid, 40);
-        ps();
-        dummy(s);
-        exit();
-    }
+    // else if ((c3_pid = fork()) == 0)
+    // {
+    //     // child 3 runs with high priority
+    //     char s[] = "z";
+    //     nice(getpid(), 1);
+    //     dummy(s);
+    //     exit();
+    // }
+
     wait();
     wait();
-    wait();
+    // wait();
     // child 1 will finish first
 
     exit();
