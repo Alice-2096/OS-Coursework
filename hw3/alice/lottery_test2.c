@@ -1,54 +1,56 @@
-#include "types.h"
-#include "date.h"
+#include "kernel/types.h"
+#include "kernel/stat.h"
 #include "user.h"
 
 void dummy()
 {
-    struct rtcdate ending;
-    int pid = getpid();
-
-    unsigned long long int x = 0;
-    unsigned long long int z;
-    for (z = 0; z < 10000000000000; z += 1)
+    int z;
+    int x = 0;
+    double y = 2.0;
+    for (z = 0; z < 1000000; z += 1)
     {
         x = x + 1;
+        y = y * (double)(x - 123432);
+        y = 2.0;
     }
-    gettime(&ending);
-
-    printf(2, "%d has finished | %d:%d:%d\n", pid, ending.hour, ending.minute, ending.second);
 }
 
+// command syntax is: 1st child nice value, 2nd child nice value
 int main(int argc, char *argv[])
 {
-    printf(2, "Starting LOTTERY TEST - 4\n");
-    struct rtcdate start;
-    int c1 = fork();
-    if (c1 == 0)
+    printf(1, "Starting LOTTERY TEST - 2\n");
+    int f, s;
+    if (argc < 3)
     {
-        c1 = getpid();
-        nice(c1, 40);
-        gettime(&start);
-        printf(1, "%d starts | %d:%d:%d\n", c1, start.hour, start.minute, start.second);
-
-        dummy();
+        printf(2, "invalid command syntax.\n");
         exit();
     }
-    int c2 = fork();
-    if (c2 == 0)
+    f = atoi(argv[1]);
+    s = atoi(argv[2]);
+
+    int i;
+    for (i = 0; i < 10; i++)
     {
-        c2 = getpid();
-        // child 2 runs here with higher priority
-        nice(c2, 1);
-        gettime(&start);
-        printf(1, "%d starts | %d:%d:%d\n", c2, start.hour, start.minute, start.second);
-
-        dummy();
-        exit();
+        int c1_pid = fork();
+        if (c1_pid == 0)
+        {
+            nice(getpid(), f);
+            dummy();
+            printf(1, "child 1 with nice value %d has finished | pID is: %d\n", f, getpid());
+            exit();
+        }
+        int c2_pid = fork();
+        if (c2_pid == 0)
+        {
+            nice(getpid(), s);
+            dummy();
+            printf(1, "child 2 with nice value %d has finished | pID is: %d\n", s, getpid());
+            exit();
+        }
+        wait();
+        wait();
+        printf(1, "\n");
     }
-
-    wait();
-    wait();
-    // output shows that child 2 will finish first
 
     exit();
 }
