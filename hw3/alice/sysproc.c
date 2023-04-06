@@ -9,101 +9,102 @@
 
 int sys_fork(void)
 {
-    return fork();
+  return fork();
 }
 
 int sys_exit(void)
 {
-    exit();
-    return 0; // not reached
+  exit();
+  return 0; // not reached
 }
 
 int sys_wait(void)
 {
-    return wait();
+  return wait();
 }
 
 int sys_kill(void)
 {
-    int pid;
+  int pid;
 
-    if (argint(0, &pid) < 0)
-        return -1;
-    return kill(pid);
+  if (argint(0, &pid) < 0)
+    return -1;
+  return kill(pid);
 }
 
 int sys_getpid(void)
 {
-    return myproc()->pid;
+  return myproc()->pid;
 }
 
 int sys_sbrk(void)
 {
-    int addr;
-    int n;
+  int addr;
+  int n;
 
-    if (argint(0, &n) < 0)
-        return -1;
-    addr = myproc()->sz;
-    if (growproc(n) < 0)
-        return -1;
-    return addr;
+  if (argint(0, &n) < 0)
+    return -1;
+  addr = myproc()->sz;
+  if (growproc(n) < 0)
+    return -1;
+  return addr;
 }
 
 int sys_sleep(void)
 {
-    int n;
-    uint ticks0;
+  int n;
+  uint ticks0;
 
-    if (argint(0, &n) < 0)
-        return -1;
-    acquire(&tickslock);
-    ticks0 = ticks;
-    while (ticks - ticks0 < n)
+  if (argint(0, &n) < 0)
+    return -1;
+  acquire(&tickslock);
+  ticks0 = ticks;
+  while (ticks - ticks0 < n)
+  {
+    if (myproc()->killed)
     {
-        if (myproc()->killed)
-        {
-            release(&tickslock);
-            return -1;
-        }
-        sleep(&ticks, &tickslock);
+      release(&tickslock);
+      return -1;
     }
-    release(&tickslock);
-    return 0;
+    sleep(&ticks, &tickslock);
+  }
+  release(&tickslock);
+  return 0;
 }
 
 // return how many clock tick interrupts have occurred
 // since start.
 int sys_uptime(void)
 {
-    uint xticks;
+  uint xticks;
 
-    acquire(&tickslock);
-    xticks = ticks;
-    release(&tickslock);
-    return xticks;
+  acquire(&tickslock);
+  xticks = ticks;
+  release(&tickslock);
+  return xticks;
 }
 
 int sys_nice(void)
 {
-    int n;
-    if (argint(0, &n) < 0)
-        return -1;
-    acquire(&tickslock);
-    int curr_nice = myproc()->nice + n;
-    if (curr_nice < -20 || curr_nice > 19)
-    {
-        // out of bounds
-        cprintf("nice : %d is out of bounds\n", curr_nice);
-        release(&tickslock);
-        return 20;
-    }
-    myproc()->nice = curr_nice;
-    // cprintf("updated nice value: %d", myproc()->nice);
+  int pid, nice_value;
+  if (argint(0, &pid) < 0)
+    return -1;
+  if (argint(1, &nice_value) < 0)
+    return -1;
 
-    // assign lower priority processes with less number, while higher priority ones get more tickets
-    myproc()->ticket = ((double)(20 - curr_nice) / 40.0) * 100;
-    // cprintf("assign %d tickets to this process\n", myproc()->ticket);
-    release(&tickslock);
-    return curr_nice;
+  return nice(pid, nice_value);
+}
+
+int sys_ps(void)
+{
+  return ps();
+}
+
+int sys_gettime(void)
+{
+  struct rtcdate *time;
+  if (argptr(0, (char **)&time, sizeof(struct rtcdate)) < 0)
+    return -1;
+  cmostime(time);
+  return 0;
 }
