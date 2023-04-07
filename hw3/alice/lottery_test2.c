@@ -35,19 +35,20 @@ int main(int argc, char *argv[])
         if (c1_pid == 0)
         {
             nice(getpid(), f);
+            int c2_pid = fork();
+            if (c2_pid == 0)
+            {
+                nice(getpid(), s);
+                dummy();
+                printf(1, "child 2 with nice value %d has finished | pID is: %d\n", s, getpid());
+                exit();
+            }
             dummy();
             printf(1, "child 1 with nice value %d has finished | pID is: %d\n", f, getpid());
+            wait();
             exit();
         }
-        int c2_pid = fork();
-        if (c2_pid == 0)
-        {
-            nice(getpid(), s);
-            dummy();
-            printf(1, "child 2 with nice value %d has finished | pID is: %d\n", s, getpid());
-            exit();
-        }
-        wait();
+
         wait();
         printf(1, "\n");
     }
