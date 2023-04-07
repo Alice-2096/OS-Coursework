@@ -1,66 +1,57 @@
-#include "types.h"
-#include "stat.h"
+#include "kernel/types.h"
+#include "kernel/stat.h"
 #include "user.h"
 
-void dummy(char *c)
+void dummy()
 {
-    int z;
-    int x = 0;
-    for (z = 0; z < 1000000000; z += 1)
+    unsigned long long int z;
+    unsigned long long int x = -10;
+    for (z = 0; z < 100000000; z += 1)
     {
         x = x + 1;
-        if (z % 100000000 == 0) // print every 100000000 iteration
-        {
-            printf(1, c);
-        }
     }
 }
 
 int main(int argc, char *argv[])
 {
-    printf(1, "Starting LOTTERY TEST - 4\n");
-
-    // int c3_pid;
-    int i;
-    for (i = 0; i < 10; i++)
+    printf(1, "Starting LOTTERY TEST - 5\n");
+    int f, s, t;
+    if (argc < 4)
     {
-        int c1_pid = fork();
-        if (c1_pid == 0)
-        {
-            char s[] = "x";
-            // child 1 runs with low priority
-            nice(getpid(), 40);
-            dummy(s);
-            printf(1, "finished: %d\n", getpid());
-            exit();
-        }
+        printf(2, "invalid command syntax.\n");
+        exit();
+    }
+    f = atoi(argv[1]);
+    s = atoi(argv[2]);
+    t = atoi(argv[3]);
+
+    int c1_pid = fork();
+    if (c1_pid == 0)
+    {
+        nice(getpid(), f);
         int c2_pid = fork();
         if (c2_pid == 0)
         {
-            // child 2 runs with medium priority
-            char s[] = "y";
-            nice(getpid(), 1);
-            dummy(s);
-            printf(1, "finished: %d\n", getpid());
+            nice(getpid(), s);
+            int c3_pid = fork();
+            if (c3_pid == 0)
+            {
+                nice(getpid(), t);
+                dummy();
+                printf(1, "child 3 with nice value %d has finished | pID is: %d\n", t, getpid());
+                exit();
+            }
+            dummy();
+            printf(1, "child 2 with nice value %d has finished | pID is: %d\n", s, getpid());
+            wait();
             exit();
         }
+        dummy();
+        printf(1, "child 1 with nice value %d has finished | pID is: %d\n", f, getpid());
         wait();
-        wait();
+        exit();
     }
 
-    // else if ((c3_pid = fork()) == 0)
-    // {
-    //     // child 3 runs with high priority
-    //     char s[] = "z";
-    //     nice(getpid(), 1);
-    //     dummy(s);
-    //     exit();
-    // }
-
     wait();
-    wait();
-    // wait();
-    // child 1 will finish first
-
     exit();
 }
