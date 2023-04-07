@@ -2,14 +2,6 @@
 #include "kernel/stat.h"
 #include "user.h"
 
-uint xorshift(uint x)
-{
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return x;
-}
-
 int main(int argc, char *argv[])
 {
     printf(1, "TESTING FOR XORSHIFT FOR MAX VALUE OF 10\n\n");
@@ -17,14 +9,12 @@ int main(int argc, char *argv[])
     // long int total_sum = 0;
     int count[10] = {0};
 
-    uint seed = 52396; // initialize the seed
-
     int i;
     for (i = 0; i < 10000; i++)
     {
-
-        seed = xorshift(seed);
-        temp_random_value = (seed % 10) + 1;
+        uint rand = (uint)random();
+        // printf(1, "%d ", rand);
+        temp_random_value = (rand % 10) + 1;
 
         if (temp_random_value >= 1 && temp_random_value <= 10)
         {
