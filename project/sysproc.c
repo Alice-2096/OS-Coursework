@@ -7,8 +7,6 @@
 #include "mmu.h"
 #include "proc.h"
 
-int tracestatus = 0; // trace default mode if OFF
-
 int sys_fork(void)
 {
   return fork();
@@ -86,19 +84,65 @@ int sys_uptime(void)
   return xticks;
 }
 
-// toggle proc->trace based on user call argument
+// toggle proc->trace, flags, output file, based on user call argument
+// trace(traceOnOffRun, eflag, syscallNamePtr, sflag, fflag, outputRedir, outputFilePath)
 int sys_trace(void)
 {
-  int n; // 0 -- OFF, 1 -- ON
-  if (argint(0, &n) < 0)
+  int t; // 0 -- Trace mode OFF, 1 -- Trace mode ON
+  char *syscallName, *pathName;
+  if (argint(0, &t) < 0)
     return -1;
-  if (n)
-  {
+  int ef, ff, sf, redir;
+  if (argint(1, &ef) < 0)
+    return -1;
+  if (argstr(2, &syscallName) < 0)
+    return -1;
+  if (argint(3, &sf) < 0)
+    return -1;
+  if (argint(4, &ff) < 0)
+    return -1;
+  if (argint(5, &redir) < 0)
+    return -1;
+  if (argstr(6, &pathName) < 0)
+    return -1;
+  if (t)
     proc->trace = 1;
+  else
+    proc->trace = 0;
+
+  if (ef)
+  {
+    proc->eflag = 1;
+    memset(proc->syscallName, 0, strlen(proc->syscallName)); // reset
+    strncpy(proc->syscallName, syscallName, strlen(syscallName));
   }
   else
   {
-    proc->trace = 0;
+    proc->eflag = 0;
   }
+
+  if (sf)
+    proc->sflag = 1;
+  else
+    proc->sflag = 0;
+
+  if (ff)
+    proc->fflag = 1;
+  else
+    proc->fflag = 0;
+
+  if (redir)
+  {
+    proc->redir = 1;
+    strncpy(proc->dirPath, pathName, strlen(pathName));
+  }
+  else
+    proc->redir = 0;
+  return 0;
+}
+
+int sys_dump(void)
+{
+  // do nothing
   return 0;
 }
