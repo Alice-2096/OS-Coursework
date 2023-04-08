@@ -21,3 +21,6 @@
 #define SYS_mkdir 20
 #define SYS_close 21
 #define SYS_trace 22
+#define SYS_dump 23
+
+#define DUMPSIZE 40
