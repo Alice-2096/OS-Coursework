@@ -59,6 +59,10 @@ int fork1(void); // Fork but panics on failure.
 void panic(char *);
 struct cmd *parsecmd(char *);
 int traceMode = 0;
+char targetSyscall[10];
+int eflag = 0;
+int sflag = 0;
+int fflag = 0;
 
 // Execute cmd.  Never returns.
 void runcmd(struct cmd *cmd)
@@ -82,11 +86,11 @@ void runcmd(struct cmd *cmd)
     ecmd = (struct execcmd *)cmd;
     if (ecmd->argv[0] == 0)
       exit();
+    // trace(traceOnOff, eflag, syscallNamePtr, sflag, fflag, outputRedir, outputFilePath)
     if (traceMode)
     {
-      trace(1);
+      trace(traceMode, eflag, targetSyscall, sflag, fflag, 0, 0);
     }
-
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -224,13 +228,26 @@ int main(void)
         argc++;
       if (argc == 2)
       {
-        // toggle trade mode on or off
+        if (compareStr(ecmd->argv[1], "dump", -1))
+        {
+          // print recent events
+          dump();
+        }
+        // toggle trace mode on or off
         if (compareStr(ecmd->argv[1], on, -1))
           traceMode = 1;
-        if (compareStr(ecmd->argv[1], off, -1))
+        else if (compareStr(ecmd->argv[1], off, -1))
           traceMode = 0;
+        else if (compareStr(ecmd->argv[1], "-s", -1))
+        {
+          sflag = 2;
+        }
+        else if (compareStr(ecmd->argv[1], "-f", -1))
+        {
+          fflag = 2;
+        }
       }
-      if (argc > 2)
+      else if (argc > 2)
       {
         if (compareStr(ecmd->argv[1], "run", -1))
         {
@@ -245,18 +262,39 @@ int main(void)
         else if (compareStr(ecmd->argv[1], "-e", -1))
         {
           // tracking only specified syscalls
+          memmove(targetSyscall, ecmd->argv[2], strlen(ecmd->argv[2]));
+          eflag = 2;
         }
         else if (compareStr(ecmd->argv[1], "-s", -1))
         {
           // tracking only successful syscalls
+          sflag = 2;
+          if (ecmd->argv[2] && compareStr(ecmd->argv[2], "-e", -1))
+          {
+            memmove(targetSyscall, ecmd->argv[3], strlen(ecmd->argv[3]));
+            eflag = 2;
+          }
         }
-        else if (compareStr(ecmd->argv[1], "-e", -1))
+        else if (compareStr(ecmd->argv[1], "-f", -1))
         {
           // tracking only failed syscalls
+          fflag = 2;
+          if (ecmd->argv[2] && compareStr(ecmd->argv[2], "-e", -1))
+          {
+            memmove(targetSyscall, ecmd->argv[3], strlen(ecmd->argv[3]));
+            eflag = 2;
+          }
         }
       }
       continue;
     }
+    // reset flag if necessary
+    if (fflag)
+      fflag--;
+    if (sflag)
+      sflag--;
+    if (eflag)
+      eflag--;
     if (fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
