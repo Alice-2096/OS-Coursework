@@ -1,6 +1,7 @@
 [//]: # (To compile and start xv6)
 make
-make qemu-nox
+
+make FOO=proc.o qemu-nox  
 
 [//]: # (Part 1: nice)
 nice_test
