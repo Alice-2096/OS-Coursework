@@ -12,6 +12,7 @@
 #define BACK 5
 
 #define MAXARGS 10
+#define MAXPATH 128
 
 struct cmd
 {
@@ -60,9 +61,11 @@ void panic(char *);
 struct cmd *parsecmd(char *);
 int traceMode = 0;
 char targetSyscall[10];
+char path[MAXPATH];
 int eflag = 0;
 int sflag = 0;
 int fflag = 0;
+int rflag = 0;
 
 // Execute cmd.  Never returns.
 void runcmd(struct cmd *cmd)
@@ -89,7 +92,7 @@ void runcmd(struct cmd *cmd)
     // trace(traceOnOff, eflag, syscallNamePtr, sflag, fflag, outputRedir, outputFilePath)
     if (traceMode)
     {
-      trace(traceMode, eflag, targetSyscall, sflag, fflag, 0, 0);
+      trace(traceMode, eflag, targetSyscall, sflag, fflag, rflag, path);
     }
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
@@ -259,11 +262,50 @@ int main(void)
           wait();
           traceMode = 0;
         }
+        else if (compareStr(ecmd->argv[1], "-o", -1))
+        {
+          int new_fd;
+          new_fd = open(ecmd->argv[2], O_CREATE | O_WRONLY);
+          if (new_fd < 0)
+          {
+            printf(2, "open %s failed\n", ecmd->argv[2]);
+            exit();
+          }
+          printf(2, "new fd: %d | file: %s\n", new_fd, ecmd->argv[2]);
+
+          int saved_stdout = dup(1);
+          close(1);
+          if (dup(new_fd) < 0) // duplicate new_fd to stdout
+          {
+            printf(2, "dup failed\n");
+            exit();
+          }
+
+          if (fork() == 0)
+          {
+            // Now, any calls to cprintf() that write to stdout will instead write to new_fd
+            if (!traceMode)
+            {
+              traceMode = 1;
+              runcmd(parsecmd("trace_fork"));
+              traceMode = 0;
+            }
+            else
+            {
+              runcmd(parsecmd("strace run trace_fork"));
+            }
+            close(new_fd);
+            dup(saved_stdout); // restore output to the console
+          }
+          wait();
+        }
         else if (compareStr(ecmd->argv[1], "-e", -1))
         {
           // tracking only specified syscalls
+          memset(targetSyscall, 0, strlen(targetSyscall)); // reset to empty string
           memmove(targetSyscall, ecmd->argv[2], strlen(ecmd->argv[2]));
           eflag = 2;
+          // printf(1, "inside shell: %s\n", targetSyscall);
         }
         else if (compareStr(ecmd->argv[1], "-s", -1))
         {
