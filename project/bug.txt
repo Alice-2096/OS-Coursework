@@ -1,0 +1,35 @@
+//PROGRAM FUNCTION PROPERLY IF ENTERED VALID CMDs
+//IF ENTER INVALID CMD, PROGRAM DOES NOT FUNCTION AS EXPECTED AFTERWARDS
+
+$ strace on
+$ echo hi
+hi
+TRACE: pid = 4 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = exit 
+$ strace -c echo hi
+hi
+syscall | calls | errors | elapsed cycles 
+-----------------------------------------
+exec     1       0       16949500
+ write   3       0       3060249
+ -----------------------------------------
+total    4       0       20009749 
+$ strace -c echo hi
+hi
+syscall | calls | errors | elapsed cycles 
+-----------------------------------------
+exec     1       0       148931667
+ write   3       0       2945917
+ -----------------------------------------
+total    4       0       151877584 
+$ strace -c README
+$ strace -c cat README
+Hello from the README file! 
+$   
+$ strace -c cat README
+Hello from the README file! 
+$ echo hi
+hi
