@@ -1,0 +1,100 @@
+$ strace on
+$ echo hi
+hi
+TRACE: pid = 4 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 4 | command name = echo | syscall = write | return value = 0
+ in format dump
+TRACE: pid = 4 | command name = echo | syscall = exit 
+$ echo hi
+hi
+TRACE: pid = 5 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 5 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 5 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 5 | command name = echo | syscall = write | return value = 0
+ in format dump
+TRACE: pid = 5 | command name = echo | syscall = exit 
+$ strace -e write
+$ echo hi
+hi
+TRACE: pid = 7 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 7 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 7 | command name = echo | syscall = write | return value = 0
+ in format dump
+$ echo hi
+hi
+TRACE: pid = 8 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 8 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 8 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 8 | command name = echo | syscall = write | return value = 0
+ in format dump
+TRACE: pid = 8 | command name = echo | syscall = exit 
+$ strace -c echo hi
+in report tracking
+hin report tracking
+iin report tracking
+
+in report tracking
+SYSCALL  CALLS   ERRORS  ELAPSED CPU CYCLES 
+------   -------         ------  ------------
+exec     1       0       77729167
+ write   3       0       23055251
+ ------  -------         ------  ------------
+total    4       0       100784418 
+in report dump
+$ echo hi
+hi
+TRACE: pid = 9 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 9 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 9 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 9 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 10 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 10 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 10 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 10 | command name = echo | syscall = write | return value = 0
+ in format dump
+TRACE: pid = 10 | command name = echo | syscall = exit 
+$ echo hi
+hi
+TRACE: pid = 11 | command name = echo | syscall = exec | return value = 0
+ TRACE: pid = 11 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 11 | command name = echo | syscall = write | return value = 0
+ TRACE: pid = 11 | command name = echo | syscall = write | return value = 0
+ in format dump
+TRACE: pid = 11 | command name = echo | syscall = exit 
+$ strace off
+$ echo hi
+hi
+$ strace -c echo hi
+in report tracking
+hin report tracking
+iin report tracking
+
+in report tracking
+$ strace on
+$ strace -c trace_fork
+in report tracking
+in report tracking
+Cin report tracking
+
+in report tracking
+in report tracking
+Gin report tracking
+
+in report tracking
+in report tracking
+in report tracking
+Pin report tracking
+
+in report tracking
+$ echo hi
+hi
+$ strace -e write
+e$ cho
+$ echo hi
+hi
+$ strace on
+$ echo hi
+hi
+$ 
