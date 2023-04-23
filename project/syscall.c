@@ -6,6 +6,23 @@
 #include "proc.h"
 #include "x86.h"
 #include "syscall.h"
+#include "stat.h"
+
+struct file
+{
+  enum
+  {
+    FD_NONE,
+    FD_PIPE,
+    FD_INODE
+  } type;
+  int ref; // reference count
+  char readable;
+  char writable;
+  struct pipe *pipe;
+  struct inode *ip;
+  uint off;
+};
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -95,6 +112,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_trace(void);
 extern int sys_dump(void);
+extern int sys_report(void);
 
 static int (*syscalls[])(void) = {
     [SYS_fork] sys_fork,
@@ -120,6 +138,7 @@ static int (*syscalls[])(void) = {
     [SYS_close] sys_close,
     [SYS_trace] sys_trace,
     [SYS_dump] sys_dump,
+    [SYS_report] sys_report,
 };
 
 static char *syscalls_names[] = {
@@ -146,31 +165,142 @@ static char *syscalls_names[] = {
     [SYS_close] "close",
     [SYS_trace] "trace",
     [SYS_dump] "dump",
+    [SYS_report] "report",
 };
 
-static char *events_cmd_name[DUMPSIZE];
+// DUMP VARIABLES AND FUNCTIONS
+static char *events_cmd_name[DUMPSIZE][MAX_CMD_NAME_LEN];
 static char *events_syscall[DUMPSIZE];
 static int events_return_value[DUMPSIZE];
 static int events_pid[DUMPSIZE];
 static int full = 0;
 static int curr = 0;
 
-// TODO take in the index where exit syscall of the current program is stored --> curr - 1
-// TODO backtracking all the way to the first syscall.
-// TODO then prints from first to exit
-void printEvents(int pid)
+void printEvents()
 {
-  int start = full ? curr : 0;
-  int i, j = 0;
-  for (i = start; j < DUMPSIZE; j++)
+  int start = full ? curr + 1 : 0;
+  if (start == DUMPSIZE)
+    start = 0;
+  int i, j, f;
+  j = 0;
+  f = full ? DUMPSIZE : curr + 1;
+  for (i = start; j < f; j++)
   {
-    cprintf("DUMP: pid = %d | command name = %s | syscall = %s | return value = %d\n ", events_pid[i], events_cmd_name[i], events_syscall[i], events_return_value[i]);
+    if (memcmp(events_syscall[i], "exit", strlen(events_syscall[i])) != 0)
+      cprintf("DUMP: pid = %d | command name = %s | syscall = %s | return value = %d\n ", events_pid[i], events_cmd_name[i], events_syscall[i], events_return_value[i]);
+    else
+      cprintf("DUMP: pid = %d | command name = %s | syscall = %s\n ", events_pid[i], events_cmd_name[i], events_syscall[i]);
 
     if (i < DUMPSIZE - 1)
       i++;
     else
       i = 0;
   }
+}
+
+// FORMATTING OUTPUT
+static char *format_cmd_name[MAX_SYSCALL_NUM][MAX_CMD_NAME_LEN];
+static char *format_syscall[MAX_SYSCALL_NUM];
+static int format_return_value[MAX_SYSCALL_NUM];
+static int format_pid[MAX_SYSCALL_NUM];
+static int format_curr = 0; // ptr to the next free space
+
+void format_dump()
+{
+  if (format_curr >= MAX_SYSCALL_NUM)
+    cprintf("STRACE ERROR : STACK OVERFLOW\n");
+
+  int i;
+  for (i = 0; i < format_curr; ++i)
+  {
+    cprintf("TRACE: pid = %d | command name = %s | syscall = %s | return value = %d\n ", format_pid[i], format_cmd_name[i], format_syscall[i], format_return_value[i]);
+  }
+}
+
+// FLAGS AND ENV VARIABLES
+static int traceMode = 0;
+static int success = 0;
+static int fail = 0;
+static int eflag = 0;
+static char target[10];
+
+void redirectOutput()
+{
+  struct file *f;
+  if (format_curr >= MAX_SYSCALL_NUM)
+    cprintf("STRACE ERROR : STACK OVERFLOW\n");
+
+  int fd = proc->redir;
+  f = proc->ofile[fd];
+  if (!proc->ofile[fd] || f->type == FD_NONE)
+  {
+    // do nothing
+  }
+  else
+  {
+    char buffer[512];
+    int p = 0;
+    int i;
+    for (i = 0; i < format_curr; ++i)
+    {
+      int len = strlen(format_syscall[i]);
+      memmove(buffer + p, format_syscall[i], len + 1);
+      p += len + 1;
+      buffer[p++] = '\n';
+    }
+    memmove(buffer + p, "exit", strlen("exit") + 1);
+    p += strlen("exit") + 1;
+    buffer[p++] = '\n';
+    buffer[p++] = '\0';
+    int bytes_written = filewrite(f, buffer, p);
+    if (bytes_written < 0)
+    {
+      cprintf("strace output redirection: write error\n");
+    }
+  }
+}
+
+// REPORT
+unsigned long long rdtsc()
+{
+  unsigned long long tsc;
+  __asm__ __volatile__("rdtsc"
+                       : "=A"(tsc));
+  return tsc;
+}
+unsigned long long start, end, elapsed_cycles;
+static int curr_pid = 0;
+static char *report_syscall[MAX_SYSCALL_NUM];
+static int report_error[MAX_SYSCALL_NUM];
+static int report_calls[MAX_SYSCALL_NUM];
+static int report_cycles[MAX_SYSCALL_NUM];
+static int report_curr = 0;
+void report_dump()
+{
+  if (report_curr >= MAX_SYSCALL_NUM)
+    cprintf("strace -c ERROR : STACK OVERFLOW\n");
+
+  cprintf("syscall | calls | errors | elapsed cycles \n");
+  cprintf("-----------------------------------------\n");
+
+  int i;
+  for (i = 0; i < report_curr; ++i)
+  {
+    cprintf("%s \t %d \t %d \t %d\n ", report_syscall[i], report_calls[i], report_error[i], report_cycles[i]);
+  }
+  // calculate totals
+  int tot_calls = 0, tot_err = 0;
+  unsigned long long tot_cycles = 0;
+  for (i = 0; i < report_curr; ++i)
+  {
+    tot_calls += report_calls[i];
+    tot_err += report_error[i];
+    tot_cycles += report_cycles[i];
+  }
+
+  cprintf("-----------------------------------------\n");
+  cprintf("total \t %d \t %d \t %d \n", tot_calls, tot_err, tot_cycles);
+  report_curr = 0;
 }
 
 void syscall(void)
@@ -180,51 +310,164 @@ void syscall(void)
   {
     if (num == SYS_dump)
     {
-      printEvents(-1);
+      printEvents();
       return;
     }
 
     //  update dump
-    //  cprintf("curr ptr is: %d | curr event is: %s\n", curr, syscalls_names[num]);
-    events_syscall[curr] = syscalls_names[num]; //! memset here?
-    events_cmd_name[curr] = proc->name;
-    events_pid[curr] = proc->pid;
-    curr++;
-    if (curr == DUMPSIZE)
+    if (proc->pid > 1 && memcmp(proc->name, "sh", strlen(proc->name)) != 0 && memcmp(proc->name, "strace", strlen(proc->name)) != 0)
     {
-      curr = 0;
-      if (!full)
-        full = 1;
+      events_syscall[curr] = syscalls_names[num];
+      memmove(events_cmd_name[curr], proc->name, strlen(proc->name) + 1);
+      events_pid[curr] = proc->pid;
     }
 
-    //  trace
-    if (num == SYS_exit && proc->trace && !proc->fflag)
+    if (traceMode > 0 && proc->trace == -1)
+      traceMode = 0;
+    else if (!traceMode && proc->trace == 1)
     {
-      if (!proc->eflag || !strncmp(proc->syscallName, "exit", strlen("exit")))
+      traceMode = 1;
+      fail = 0;
+      success = 0;
+      eflag = 0;
+      curr_pid = 0;
+    }
+
+    if (!curr_pid && proc->report)
+      curr_pid = proc->pid;
+
+    // trace exit syscall
+    // dump output when before exit
+    if (num == SYS_exit && (traceMode || proc->trace || proc->run) && memcmp(proc->name, "strace", strlen(proc->name)) && memcmp(proc->name, "sh", strlen(proc->name)))
+    {
+      if (proc->report && curr_pid == proc->pid)
+      {
+        report_dump();
+      }
+      // dump traced syscall of the current command
+      if (!curr_pid && !proc->redir)
+      {
+        format_dump();
+      }
+
+      if (proc->redir)
+      {
+        redirectOutput();
+      }
+
+      if (!proc->redir && !curr_pid && !fail && !success && (!eflag || !strncmp(target, "exit", strlen("exit"))))
       {
         cprintf("TRACE: pid = %d | command name = %s | syscall = %s \n", proc->pid, proc->name, syscalls_names[num]);
       }
+      // reset
+      if (proc->run)
+        proc->run = 0;
+      if (proc->pid == curr_pid)
+      {
+        curr_pid = 0;
+        format_curr = 0;
+        report_curr = 0;
+        memset(report_error, 0, sizeof(report_error));
+        memset(report_calls, 0, sizeof(report_calls));
+        memset(report_cycles, 0, sizeof(report_cycles));
+      }
+      eflag = 0;
+      success = 0;
+      fail = 0;
+      format_curr = 0;
     }
-    proc->tf->eax = syscalls[num]();
-    // cprintf("process eflag:%d eflag name:%s | fflag %d sfflag %d \n", proc->eflag, proc->syscallName, proc->fflag, proc->sflag);
-    events_return_value[curr] = proc->tf->eax;
 
-    if (proc->sflag && proc->tf->eax == -1)
+    // track the number of elapsed cycles
+    if (proc->report && (proc->pid != curr_pid || memcmp(syscalls_names[num], "exit", strlen("exit"))))
     {
-      // print nothing
+      start = rdtsc();
+      proc->tf->eax = syscalls[num]();
+      end = rdtsc();
+      elapsed_cycles = end - start;
+      // update report
+      int i;
+      int found = 0;
+      for (i = 0; i < report_curr; ++i)
+      {
+        if (!memcmp(syscalls_names[num], report_syscall[i], strlen(report_syscall[i])))
+        {
+          found = 1;
+          break;
+        }
+      }
+      if (i >= MAX_SYSCALL_NUM)
+        cprintf("STACK OVERFLOW\n");
+
+      report_calls[i]++;
+      report_cycles[i] += elapsed_cycles;
+      if ((int)proc->tf->eax < 0)
+        report_error[i]++;
+      if (!found)
+      {
+        report_syscall[i] = syscalls_names[num];
+        report_curr++;
+      }
     }
-    else if (proc->fflag && proc->tf->eax == 0)
+    else
     {
-      // print nothing
+      proc->tf->eax = syscalls[num]();
     }
-    else if (proc->eflag && strncmp(proc->syscallName, syscalls_names[num], strlen(proc->syscallName)))
+
+    if (proc->pid > 1 && memcmp(proc->name, "sh", strlen(proc->name)) != 0 && memcmp(proc->name, "strace", strlen(proc->name)) != 0)
     {
-      // print nothing if syscall name does not match
+      events_return_value[curr] = proc->tf->eax;
+      curr++;
+      if (curr == DUMPSIZE)
+      {
+        curr = 0;
+        if (!full)
+          full = 1;
+      }
     }
-    else if (proc->trace)
+
+    // set flags
+    if (!memcmp(proc->name, "strace", strlen(proc->name)))
     {
-      cprintf("TRACE: pid = %d | command name = %s | syscall = %s | return value = %d\n", proc->pid, proc->name, syscalls_names[num], proc->tf->eax);
-      // cprintf("process eflag:%d eflag name:%s | fflag %d sfflag %d \n", proc->eflag, proc->syscallName, proc->fflag, proc->sflag);
+      if (proc->eflag)
+      {
+        eflag = proc->eflag;
+        memmove(target, proc->syscallName, strlen(proc->syscallName));
+      }
+      else
+        eflag = 0;
+      if (proc->sflag)
+        success = 1;
+      else
+        success = 0;
+      if (proc->fflag)
+        fail = 1;
+      else
+        fail = 0;
+    }
+
+    events_return_value[curr] = proc->tf->eax;
+    if (success && proc->tf->eax == -1)
+    {
+      // do nothing
+    }
+    else if (fail && proc->tf->eax != -1)
+    {
+      // do nothing
+    }
+    else if (eflag && strncmp(target, syscalls_names[num], eflag))
+    {
+      // do nothing if syscall name does not match
+    }
+    else if (traceMode || proc->trace || proc->run || proc->redir)
+    {
+      if (proc->pid > 1 && memcmp(proc->name, "sh", strlen(proc->name)) != 0 && memcmp(proc->name, "strace", strlen(proc->name)) != 0)
+      {
+        format_syscall[format_curr] = syscalls_names[num];
+        format_return_value[format_curr] = proc->tf->eax;
+        memmove(format_cmd_name[format_curr], proc->name, strlen(proc->name) + 1);
+        format_pid[format_curr] = proc->pid;
+        format_curr++;
+      }
     }
   }
   else
