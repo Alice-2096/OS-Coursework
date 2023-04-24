@@ -33,9 +33,13 @@ echo hi
 
 strace on
 
-echo hello
+echo helloWorld!
 
 cat README
+
+strace dump
+
+echo helloAgain
 
 strace dump
 
@@ -102,6 +106,14 @@ strace -c echo hi
 
 **4.4 Write output to file**
 
+strace on 
+
+strace -o outFile cat README
+
+strace off
+
+cat outFile
+
 **4.5 Application** 
 
 strace on	
@@ -113,6 +125,17 @@ strace -c application_2
 strace -f 
 
 application_2
+
+
+**4.5 Tracing on Linux**
+
+gcc -o application_2 application_2.c
+
+./application_2
+
+strace -c ./application_2
+
+strace -e trace=openat,read,close,access ./application_2
 
 
 
