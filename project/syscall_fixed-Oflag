@@ -293,7 +293,7 @@ void redirectOutput()
     format_pid[format_curr] = proc->pid;
     memmove(format_cmd_name[format_curr], proc->name, strlen(proc->name) + 1);
     format_syscall[format_curr] = "exit";
-    for (i = 0; i <= format_curr; i++)
+    for (i = 0; i <= format_curr && p < sizeof(buffer); i++)
     {
       // pid
       memmove(buffer + p, "TRACE: pid = ", strlen("TRACE: pid = "));
@@ -354,6 +354,7 @@ unsigned long long rdtsc()
 }
 unsigned long long start, end, elapsed_cycles;
 static int curr_pid = 0;
+static int curr_pid_flag = 0;
 static char *report_syscall[MAX_SYSCALL_NUM];
 static int report_error[MAX_SYSCALL_NUM];
 static int report_calls[MAX_SYSCALL_NUM];
@@ -420,6 +421,13 @@ void syscall(void)
     if (!curr_pid && proc->report)
       curr_pid = proc->pid;
 
+    //! NEW
+    if (!curr_pid_flag && (eflag || success || fail) && memcmp(proc->name, "sh", strlen(proc->name)) && memcmp(proc->name, "strace", strlen(proc->name)))
+    {
+      curr_pid_flag = proc->pid;
+      // cprintf("setting pid flag: cmd name: %s | process %d | e: %d  s : %d f: %d\n", proc->name, proc->pid, eflag, success, fail);
+    }
+
     // trace exit syscall
     // dump output when before exit
     if (num == SYS_exit && (traceMode || proc->trace || proc->run) && memcmp(proc->name, "strace", strlen(proc->name)) && memcmp(proc->name, "sh", strlen(proc->name)))
@@ -454,10 +462,19 @@ void syscall(void)
         memset(report_error, 0, sizeof(report_error));
         memset(report_calls, 0, sizeof(report_calls));
         memset(report_cycles, 0, sizeof(report_cycles));
+        eflag = 0;
+        success = 0;
+        fail = 0;
+        format_curr = 0;
       }
-      eflag = 0;
-      success = 0;
-      fail = 0;
+      if (proc->pid == curr_pid_flag)
+      {
+        eflag = 0;
+        success = 0;
+        fail = 0;
+        // cprintf("process: %d\n", proc->pid);
+        curr_pid_flag = 0;
+      }
       format_curr = 0;
     }
 
