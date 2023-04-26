@@ -287,6 +287,7 @@ void redirectOutput()
   else
   {
     char buffer[1024];
+    memset(buffer, 0, sizeof(buffer));
     int p = 0;
     int i;
     format_pid[format_curr] = proc->pid;
@@ -294,31 +295,31 @@ void redirectOutput()
     for (i = 0; i <= format_curr; i++)
     {
       // pid
-      memmove(buffer + p, "TRACE: pid = \0", strlen("TRACE: pid = \0"));
-      p += strlen("TRACE: pid = \0") + 1;
+      memmove(buffer + p, "TRACE: pid = ", strlen("TRACE: pid = "));
+      p += strlen("TRACE: pid = ");
       char pid[8];
       int_to_string(format_pid[i], pid);
-      memmove(buffer + p, pid, strlen(pid) + 1);
+      memmove(buffer + p, pid, strlen(pid));
       p += strlen(pid) + 2;
       buffer[p++] = ' ';
       buffer[p++] = '|';
       buffer[p++] = ' ';
 
       // return val
-      memmove(buffer + p, "return value = \0", strlen("return value = \0"));
-      p += strlen("return value = \0") + 1;
+      memmove(buffer + p, "return value = ", strlen("return value = "));
+      p += strlen("return value = ") + 2;
       char ret[8];
       int_to_string(format_return_value[i], ret);
       memmove(buffer + p, ret, strlen(ret));
-      p += strlen(ret) + 1;
+      p += strlen(ret) + 2;
       buffer[p++] = ' ';
       buffer[p++] = '|';
       buffer[p++] = ' ';
 
-      memmove(buffer + p, "syscall = \0", strlen("syscall = \0"));
-      p += strlen("syscall = \0") + 1;
+      memmove(buffer + p, "syscall = ", strlen("syscall = "));
+      p += strlen("syscall = ") + 2;
       memmove(buffer + p, format_syscall[i], strlen(format_syscall[i]));
-      p += strlen(format_syscall[i]) + 1;
+      p += strlen(format_syscall[i]) + 2;
       buffer[p++] = '\n';
     }
     buffer[p++] = '\0';
