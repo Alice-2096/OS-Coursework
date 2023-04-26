@@ -199,7 +199,7 @@ void printEvents()
 }
 
 // FORMATTING OUTPUT
-static char *format_cmd_name[MAX_SYSCALL_NUM][MAX_CMD_NAME_LEN];
+static char format_cmd_name[MAX_SYSCALL_NUM][MAX_CMD_NAME_LEN];
 static char *format_syscall[MAX_SYSCALL_NUM];
 static int format_return_value[MAX_SYSCALL_NUM];
 static int format_pid[MAX_SYSCALL_NUM];
@@ -320,6 +320,15 @@ void redirectOutput()
       p += strlen("syscall = ") + 2;
       memmove(buffer + p, format_syscall[i], strlen(format_syscall[i]));
       p += strlen(format_syscall[i]) + 2;
+      buffer[p++] = ' ';
+      buffer[p++] = '|';
+      buffer[p++] = ' ';
+
+      // cmd name
+      memmove(buffer + p, "command name = ", strlen("command name = "));
+      p += strlen("command name = ") + 2;
+      memmove(buffer + p, format_cmd_name[i], strlen(format_cmd_name[i]));
+      p += strlen(format_cmd_name[i]) + 1;
       buffer[p++] = '\n';
     }
     buffer[p++] = '\0';
